@@ -1,0 +1,33 @@
+# Set the default behavior, in case people don't have core.autocrlf set.
+* text=auto
+
+#
+# The above will handle all files NOT found below
+#
+# These files are text and should be normalized (convert CRLF to LF)
+*.md text
+*.txt text
+*.html text
+*.css text
+*.js text
+*.json text
+*.xml text
+*.yml text
+*.yaml text
+*.properties text
+*.gradle text
+*.kts text
+*.java text
+*.kt text
+*.groovy text
+.gitignore text
+.gitattributes text
+gradlew text
+
+# These files are binary and should be left untouched
+*.jar binary
+*.png binary
+*.svg binary
+*.gif binary
+*.jpg binary
+*.jpeg binary

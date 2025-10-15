@@ -1,0 +1,27 @@
+<idea-plugin>
+    <id>dev.idlefit.IdleFit</id>
+    <name>IdleFit</name>
+    <vendor url="https://github.com/a-al-baka/idlefit-intellij-plugin">IdleFit</vendor>
+
+    <description><![CDATA[
+    IdleFit helps developers stay active by prompting short physical exercises during natural IDE idle moments.
+    <br><br>
+    Features:<br>
+    • Customizable exercise reminders triggered by compilation, test runs, or indexing<br>
+    • Configurable minimum time between prompts<br>
+    • Custom exercise list<br>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.java</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <notificationGroup id="IdleFit" displayType="STICKY_BALLOON"/>
+        <applicationConfigurable parentId="tools"
+                                 instance="dev.idlefit.IdleFitSettingsConfigurable"
+                                 id="dev.idlefit.idlefit.settings"
+                                 displayName="IdleFit"/>
+        <applicationService serviceImplementation="dev.idlefit.IdleFitSettingsState"/>
+        <postStartupActivity implementation="dev.idlefit.IdleFitManager"/>
+    </extensions>
+</idea-plugin>
