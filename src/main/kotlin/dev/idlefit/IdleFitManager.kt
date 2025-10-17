@@ -2,33 +2,42 @@ package dev.idlefit
 
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.compiler.CompilationStatusListener
 import com.intellij.openapi.compiler.CompileContext
 import com.intellij.openapi.compiler.CompilerTopics
+import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.execution.ExecutionListener
 import com.intellij.execution.ExecutionManager
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.notification.Notification
+import com.intellij.util.messages.MessageBusConnection
 import java.util.concurrent.TimeUnit
 
-class IdleFitManager : ProjectActivity {
+@Service(Service.Level.PROJECT)
+class IdleFitManager(private val project: Project) : Disposable {
 
     private val settings = IdleFitSettingsState.instance.state
     private var lastExerciseTime = System.currentTimeMillis()
     private var notification: Notification? = null
+    private var messageBusConnection: MessageBusConnection? = null
 
-    override suspend fun execute(project: Project) {
-        val messageBusConnection = project.messageBus.connect()
+    fun subscribe() {
+        if (messageBusConnection != null) {
+            LOG.info("Already subscribed.")
+            return
+        }
+        LOG.info("Subscribing to events.")
+        messageBusConnection = project.messageBus.connect(this)
 
-        messageBusConnection.subscribe(CompilerTopics.COMPILATION_STATUS, object : CompilationStatusListener {
+        messageBusConnection?.subscribe(CompilerTopics.COMPILATION_STATUS, object : CompilationStatusListener {
             override fun compilationFinished(
                 isAborted: Boolean,
                 errors: Int,
@@ -37,12 +46,12 @@ class IdleFitManager : ProjectActivity {
             ) {
                 if (settings.compilationTriggerEnabled) {
                     LOG.info("Compilation finished trigger")
-                    showExercisePopup(project)
+                    showExercisePopup()
                 }
             }
         })
 
-        messageBusConnection.subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
+        messageBusConnection?.subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
             override fun processTerminated(
                 executorId: String,
                 env: ExecutionEnvironment,
@@ -51,16 +60,16 @@ class IdleFitManager : ProjectActivity {
             ) {
                 if (settings.processTerminationTriggerEnabled) {
                     LOG.info("Process terminated trigger")
-                    showExercisePopup(project)
+                    showExercisePopup()
                 }
             }
         })
 
-        messageBusConnection.subscribe(DumbService.DUMB_MODE, object : DumbService.DumbModeListener {
+        messageBusConnection?.subscribe(DumbService.DUMB_MODE, object : DumbService.DumbModeListener {
             override fun enteredDumbMode() {
                 if (settings.indexingTriggerEnabled) {
                     LOG.info("Indexing started trigger")
-                    showExercisePopup(project)
+                    showExercisePopup()
                 }
             }
 
@@ -68,12 +77,15 @@ class IdleFitManager : ProjectActivity {
         })
     }
 
-    private fun showExercisePopup(project: Project) {
-        if (!settings.pluginEnabled) {
-            LOG.debug("IdleFit plugin is disabled.")
-            return
+    fun unsubscribe() {
+        if (messageBusConnection != null) {
+            LOG.info("Unsubscribing from events.")
+            messageBusConnection?.disconnect()
+            messageBusConnection = null
         }
+    }
 
+    private fun showExercisePopup() {
         if (notification?.isExpired == false) {
             LOG.debug("Notification already showing, aborting.")
             return
@@ -120,6 +132,10 @@ class IdleFitManager : ProjectActivity {
 
             notification?.notify(project)
         }
+    }
+
+    override fun dispose() {
+        unsubscribe()
     }
 
     companion object {

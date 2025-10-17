@@ -22,6 +22,6 @@
                                  id="dev.idlefit.idlefit.settings"
                                  displayName="IdleFit"/>
         <applicationService serviceImplementation="dev.idlefit.IdleFitSettingsState"/>
-        <postStartupActivity implementation="dev.idlefit.IdleFitManager"/>
+        <postStartupActivity implementation="dev.idlefit.IdleFitStartupActivity"/>
     </extensions>
 </idea-plugin>

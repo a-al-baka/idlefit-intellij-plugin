@@ -1,6 +1,8 @@
 package dev.idlefit
 
+import com.intellij.openapi.components.service
 import com.intellij.openapi.options.Configurable
+import com.intellij.openapi.project.ProjectManager
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.dsl.builder.panel
 import javax.swing.JComponent
@@ -14,7 +16,7 @@ class IdleFitSettingsConfigurable : Configurable {
     private val enableCheckBox = JBCheckBox("", settings.pluginEnabled)
     private val minTimeSpinner = JSpinner(SpinnerNumberModel(settings.minTimeBetweenExercises, 15, 90, 1))
     private val compilationCheckBox = JBCheckBox("Compilation", settings.compilationTriggerEnabled)
-    private val processTerminationCheckBox = JBCheckBox("Process Termination", settings.processTerminationTriggerEnabled)
+    private val processTerminationCheckBox = JBCheckBox("Process termination", settings.processTerminationTriggerEnabled)
     private val indexingCheckBox = JBCheckBox("Indexing", settings.indexingTriggerEnabled)
     private val exerciseCheckBoxes = settings.exercises.map { (exercise, enabled) ->
         JBCheckBox(exercise, enabled)
@@ -27,7 +29,7 @@ class IdleFitSettingsConfigurable : Configurable {
             }
             row("Minimum time between exercises:") {
                 cell(minTimeSpinner)
-                label("minutes")
+                label("Minutes")
             }
             row("Show popup on:") {
                 cell(compilationCheckBox)
@@ -54,12 +56,25 @@ class IdleFitSettingsConfigurable : Configurable {
     }
 
     override fun apply() {
+        val previousState = settings.pluginEnabled
         settings.pluginEnabled = enableCheckBox.isSelected
         settings.minTimeBetweenExercises = minTimeSpinner.value as Int
         settings.compilationTriggerEnabled = compilationCheckBox.isSelected
         settings.processTerminationTriggerEnabled = processTerminationCheckBox.isSelected
         settings.indexingTriggerEnabled = indexingCheckBox.isSelected
         exerciseCheckBoxes.forEach { settings.exercises[it.text] = it.isSelected }
+
+        if (previousState != settings.pluginEnabled) {
+            val projects = ProjectManager.getInstance().openProjects
+            for (project in projects) {
+                val manager = project.service<IdleFitManager>()
+                if (settings.pluginEnabled) {
+                    manager.subscribe()
+                } else {
+                    manager.unsubscribe()
+                }
+            }
+        }
     }
 
     override fun reset() {
